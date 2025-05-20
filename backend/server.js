@@ -21,12 +21,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
-// Configuración CORS para todos los entornos
-// Esta configuración reemplaza la condicional anterior y maneja tanto desarrollo como producción
 app.use(
     cors({
         origin: process.env.NODE_ENV === "production"
-            ? [process.env.CLIENT_URL, "https://egresados-ittg.onrender.com"] // Agrega el dominio de tu aplicación en Render
+            ? [process.env.CLIENT_URL, "https://egresados-ittg.onrender.com"]
             : ["http://localhost:5173", "http://127.0.0.1:5173"],
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -34,12 +32,10 @@ app.use(
     })
 );
 
-// Update these lines
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser());
 
-// Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/posts", postRoutes);
@@ -50,24 +46,18 @@ app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/announcements", announcementRoutes);
 app.use("/api/v1/jobs", jobPostRoutes);
 
-// Configuración para que el frontend y el backend funcionen en el mismo lugar
 if (process.env.NODE_ENV === "production") {
-    // El dirname es donde se inicia la página una vez que empieza todo
     app.use(express.static(path.join(__dirname, "/frontend/dist")));
     
-    // Esto hace que en caso de que metan otra dirección se reenvie al usuario al index
     app.get("*", (req, res) => {
         res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
     });
 } else {
-    // Ruta básica para verificar que el servidor está funcionando en desarrollo
     app.get('/', (req, res) => {
         res.send('API is running...');
     });
 }
 
-// Optional: Set up automatic cleanup of expired projects
-// This will run the cleanup job every day at midnight
 if (process.env.NODE_ENV === "production") {
     setInterval(async () => {
         try {
@@ -76,10 +66,10 @@ if (process.env.NODE_ENV === "production") {
         } catch (error) {
             console.error("Error in expired projects cleanup job:", error);
         }
-    }, 24 * 60 * 60 * 1000); // Run every 24 hours
+    }, 24 * 60 * 60 * 1000);
 }
 
 app.listen(PORT, () => {
-    console.log(Server running on port ${PORT});  // Corregido: se agregaron backticks
+    console.log(Server running on port ${PORT});
     connectDB();
 });
