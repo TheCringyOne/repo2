@@ -15,32 +15,31 @@ import { connectDB } from "./lib/db.js";
 import { cleanupExpiredProjects } from "./jobs/projectCleanup.js";
 import announcementRoutes from "./routes/announcement.route.js";
 import jobPostRoutes from "./routes/jobPost.route.js";
-import { fileURLToPath } from 'url';
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
+const __dirname = path.resolve();
 
-// Configurar __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Configuración CORS para todos los entornos
+// Esta configuración reemplaza la condicional anterior y maneja tanto desarrollo como producción
+app.use(
+    cors({
+        origin: process.env.NODE_ENV === "production"
+            ? [process.env.CLIENT_URL, "https://egresados-ittg.onrender.com"] // Agrega el dominio de tu aplicación en Render
+            : ["http://localhost:5173", "http://127.0.0.1:5173"],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+    })
+);
 
-// Middlewares para todas las configuraciones
+// Update these lines
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser());
 
-// Configuración CORS para desarrollo
-if (process.env.NODE_ENV !== "production") {
-    app.use(
-        cors({
-            origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
-            credentials: true,
-        })
-    );
-}
-
-// Rutas de la API
+// Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/posts", postRoutes);
@@ -51,23 +50,24 @@ app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/announcements", announcementRoutes);
 app.use("/api/v1/jobs", jobPostRoutes);
 
-// Configuración para producción: Sirve los archivos estáticos del frontend
+// Configuración para que el frontend y el backend funcionen en el mismo lugar
 if (process.env.NODE_ENV === "production") {
-    // Sirve archivos estáticos
-    app.use(express.static(path.join(__dirname, "../frontend/dist")));
+    // El dirname es donde se inicia la página una vez que empieza todo
+    app.use(express.static(path.join(__dirname, "/frontend/dist")));
     
-    // Todas las rutas que no sean API redirigen al index.html
+    // Esto hace que en caso de que metan otra dirección se reenvie al usuario al index
     app.get("*", (req, res) => {
-        res.sendFile(path.resolve(__dirname, "..", "frontend", "dist", "index.html"));
+        res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
     });
 } else {
-    // Ruta simple para verificar que el servidor está funcionando en desarrollo
+    // Ruta básica para verificar que el servidor está funcionando en desarrollo
     app.get('/', (req, res) => {
-        res.send('API está funcionando correctamente');
+        res.send('API is running...');
     });
 }
 
-// Configuración de tareas programadas
+// Optional: Set up automatic cleanup of expired projects
+// This will run the cleanup job every day at midnight
 if (process.env.NODE_ENV === "production") {
     setInterval(async () => {
         try {
@@ -79,8 +79,7 @@ if (process.env.NODE_ENV === "production") {
     }, 24 * 60 * 60 * 1000); // Run every 24 hours
 }
 
-// Iniciar el servidor
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(Server running on port ${PORT});
     connectDB();
 });
